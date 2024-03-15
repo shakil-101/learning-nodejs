@@ -21,7 +21,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Please provide a password'],
-    minLength: 8
+    minLength: 8,
+    select: false
   },
   passwordConfirm: {
     type: String,
@@ -42,6 +43,15 @@ userSchema.pre('save', async function(next) {
   this.passwordConfirm = undefined;
   next();
 });
+
+// to compare two passwords, we need to use instance of schema methods
+// this instance method will be available to all the user documents
+userSchema.methods.correctPassword = async function(
+  inputPassword,
+  savedPassword
+) {
+  return await bcrypt.compare(inputPassword, savedPassword);
+};
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;

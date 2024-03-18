@@ -8,6 +8,7 @@ const {
   deleteTour,
   aliasTopTours
 } = require('../controllers/tourController');
+const { protect } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.route('/top-5-cheap').get(aliasTopTours, getAllTours);
 
 router
   .route('/')
-  .get(getAllTours)
+  .get(protect, getAllTours)
   .post(postTour);
 
 router

@@ -1,9 +1,18 @@
 const fs = require('fs');
+const User = require('../models/userModel');
 
 const users = JSON.parse(
   fs.readFileSync(`${__dirname}/../dev-data/data/users.json`)
 );
 
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+
+  Object.keys(obj).forEach(el => {
+    if (allowedFields.includes(el)) newObj[el] = obj[el];
+  });
+  return newObj;
+};
 exports.getAllUsers = (req, res) => {
   res.status(200).json({
     message: 'Hello server',
@@ -50,4 +59,17 @@ exports.createUser = (req, res) => {
       });
     }
   );
+};
+
+exports.updateMe = async (req, res) => {
+  const filteredBody = filterObj(req.body, 'name', 'email');
+  const updatedUser = await User.findByIdAndUpdate(req.user._id, filteredBody, {
+    new: true,
+    runValidators: true
+  });
+
+  res.status(201).json({
+    message: 'User updated',
+    user: updatedUser
+  });
 };

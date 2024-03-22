@@ -1,4 +1,6 @@
 const { promisify } = require('util');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const User = require('../models/userModel');
 var jwt = require('jsonwebtoken');
@@ -177,5 +179,71 @@ exports.forgotPassword = async (req, res, next) => {
   }
 };
 exports.resetPassword = async (req, res, next) => {
+  if (req.body.password !== req.body.passwordConfirm) {
+    const errorMessage = res.status(404).json({
+      status: 'failed',
+      message: 'password and passwordConfirm are not similar'
+    });
+    return next(errorMessage);
+  }
+
+  // 1. get user based on the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() }
+  });
+
+  // 2. if the token has not expired and there is user, set new password
+  if (!user) {
+    const errorMessage = res.status(400).json({
+      status: 'failed',
+      message: 'token is invalid or has been expired'
+    });
+    return next(errorMessage);
+  }
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // 3. update changedPasswordAt property for the user
+  // 4. log the user in and set the token
+  const token = signToken(user._id);
+  res.status(200).json({
+    status: 'success',
+    token
+  });
+
   next();
+};
+
+exports.updatePassword = async (req, res, next) => {
+  // 1. get user from collection
+  const user = await User.findOne(req.user._id).select('+password');
+  console.log(req.body);
+  console.log(user);
+  // 2. check if posted password is correct
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+    return next(handleError(res, 401, 'Your current password is wrong'));
+  }
+
+  // // 3. if so, update the password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+
+  // // 4. log user in, send JWT
+  const token = signToken(user._id);
+
+  res.status(200).json({
+    status: 'success',
+    token
+  });
 };

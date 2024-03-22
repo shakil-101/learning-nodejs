@@ -10,15 +10,20 @@ const {
   signup,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  protect,
+  updatePassword
 } = require('../controllers/authController');
 
 const router = express.Router();
 
 router.post('/signup', signup);
 router.post('/login', login);
-router.route('/forgetPassword').post(forgotPassword);
-router.route('/resetPassword/:token').patch(resetPassword);
+router.post('/forgetPassword', forgotPassword);
+router.patch('/resetPassword/:token', resetPassword);
+
+router.patch('/updateMyPassword', protect, updatePassword);
+
 router
   .route('/')
   .get(getAllUsers)
